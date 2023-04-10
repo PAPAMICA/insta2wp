@@ -15,6 +15,8 @@ instagram_token = os.environ.get('INSTAGRAM_TOKEN')
 response = requests.get(f'https://graph.instagram.com/me/media?fields=id,media_type,media_url,caption&access_token={instagram_token}')
 ig_data = json.loads(response.text)
 
+print(ig_data)
+
 credentials = wp_username + ':' + wp_password
 token = base64.b64encode(credentials.encode())
 header_json = {'Authorization': 'Basic ' + token.decode('utf-8')}
