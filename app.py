@@ -25,14 +25,17 @@ for post in ig_data['data']:
     post_id = post['id']
     post_type = post['media_type']
     post_url = post['media_url']
-    post_caption = post['caption']
+    post_cat = post['caption'].split('\n')[0].split(' - ')[0]
+    post_title = post['caption'].split('\n')[0].split(' - ')[1]
+    post_desc = post['caption'].split('\n')[1]
+    post_price = post['caption'].split('\n')[2]
     
     # Vérification de l'existance du post
     response = requests.get(f'{wp_url}/wp-json/wp/v2/posts?slug={post_id}')
     existing_posts = json.loads(response.text)
 
     if existing_posts:
-        print(f"L'article avec le slug {post_caption} existe déjà !")
+        print(f"L'article avec le slug {post_title} existe déjà !")
     else:
         # Téléchargement de l'image depuis Instagram
         image_response = requests.get(post_url)
@@ -43,25 +46,30 @@ for post in ig_data['data']:
                 f.write(image_response.content)
                 
             # Upload de l'image sur Wordpress
-            media = {'file': open(f'{post_id}.jpg',"rb"),'title': f"{post_caption if post_caption else f'Instagram post {post_id}'}"}
+            media = {'file': open(f'{post_id}.jpg',"rb"),'title': f"{post_title if post_title else f'Instagram post {post_id}'}"}
             img_response = requests.post(f'{wp_url}/wp-json/wp/v2/media', headers=header_json, files = media)
 
             if img_response.status_code == 201:
-                print(f"L\'image de {post_caption if post_caption else f'Instagram post {post_id}'} a été uploadée avec succès sur Wordpress !")
+                print(f"L\'image de {post_title if post_title else f'Instagram post {post_id}'} a été uploadée avec succès sur Wordpress !")
                 img_data = json.loads(img_response.text)
             else:
-                print(f"Une erreur est survenue lors de l\'upload de l\'image de {post_caption if post_caption else f'Instagram post {post_id}'} sur Wordpress")
+                print(f"Une erreur est survenue lors de l\'upload de l\'image de {post_title if post_title else f'Instagram post {post_id}'} sur Wordpress")
         else:
-            print(f"Impossible de récupérer l\'image de {post_caption if post_caption else f'Instagram post {post_id}'} depuis l\'URL spécifiée")
+            print(f"Impossible de récupérer l\'image de {post_title if post_title else f'Instagram post {post_id}'} depuis l\'URL spécifiée")
+
+        # Récupérer l'ID de la catégorie
+
+        response = requests.get(f"{wp_url}/wp-json/wp/v2/categories?slug={post_cat}", auth=(wp_username, wp_password))
+        category_id = response.json()[0]['id']
 
         # Création de l'article sur Wordpress
         wp_post_data = {
-            'title': post_caption if post_caption else f'Instagram post {post_id}',
-            'content': f'<img src="{post_url}" alt="{post_caption}" />',
+            'title': post_title if post_title else f'Instagram post {post_id}',
+            'content': f'<img src="{wp_url}/wp-content/uploads/{post_id}.jpg" alt="{post_title if post_title else f"Instagram post {post_id}"}"><p>{post_desc}</p></br></br><p>{post_price}</p>',
             'slug': f'{post_id}',
             'featured_media': img_data['id'],
+            'categories': category_id,
             'status': 'publish'
-            #'categories': [1]  # ID de la catégorie à laquelle ajouter l'article
         }
         headers = {'Content-Type': 'application/json'}
         auth = requests.auth.HTTPBasicAuth(wp_username, wp_password)
@@ -69,6 +77,6 @@ for post in ig_data['data']:
         
         # Vérification de la réponse du serveur
         if response.status_code == 201:
-            print(f"L'article pour la publication Instagram {post_caption if post_caption else f'Instagram post {post_id}'} a été créé avec succès !")
+            print(f"L'article pour la publication Instagram {post_title if post_title else f'Instagram post {post_id}'} a été créé avec succès !")
         else:
             print(f"Une erreur est survenue lors de la publication de l'article : {response.text}")
