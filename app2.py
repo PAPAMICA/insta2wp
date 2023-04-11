@@ -1,4 +1,5 @@
 import os
+import glob
 import requests
 import json
 import base64
@@ -65,7 +66,7 @@ for post in ig_data['data']:
         # Extraction des informations de publication
         post_type = post['media_type']
         post_url = post['media_url']
-        post_cat = post['caption'].split('\n')[0].split(' - ')[0]
+        post_cat = post['caption'].split('#', 1)[-1].split()[0]
         post_title = post['caption'].split('\n')[0].split(' - ')[1]
         post_desc = post['caption'].split('\n')[1]
         #post_price = post['caption'].split('\n')[2]
@@ -104,9 +105,10 @@ for post in ig_data['data']:
                 img_list.append({"src": f'https://nevermind.papamica.dev/wp-content/uploads/{img}'})
 
             # Récupérer l'ID de la catégorie
-
-            #response = requests.get(f"{wc_url}/wp-json/wc/v3/products/categories?slug={post_cat}", auth=(wc_consumer_key, wc_consumer_secret))
-            #category_id = response.json()[0]['id']
+            response = requests.get(f"{wc_url}/wp-json/wc/v3/products/categories?slug={post_cat}", auth=(wc_consumer_key, wc_consumer_secret))
+            category_id = response.json()[0]['id']
+            if not category_id:
+                category_id = 0
             
             # Création du produit sur WooCommerce
             wc_product_data = {
@@ -116,7 +118,7 @@ for post in ig_data['data']:
                 'short_description': '',
                 'type': 'simple',
                 'regular_price': post_price,
-                #'categories': [{'id': category_id}],
+                'categories': [{'id': category_id}],
                 "images": img_list
             }
             response = requests.post(f'{wc_url}/wp-json/wc/v3/products', auth=(wc_consumer_key, wc_consumer_secret), json=wc_product_data)
@@ -132,4 +134,5 @@ for post in ig_data['data']:
         continue
 
 # Suppression de l'image localement
-#os.remove(f'*.jpg')
+for file in glob.glob("*.jpg"):
+    os.remove(file)
