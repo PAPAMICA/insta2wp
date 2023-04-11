@@ -88,8 +88,7 @@ current_timestamp = int(time.time())
 #print(ig_data)
 
 # Boucle pour parcourir les publications et créer des produits sur WooCommerce
-print(datetime.fromisoformat(post['timestamp']).timestamp())
-recent_posts = [post for post in ig_data['data'] if current_timestamp - datetime.fromisoformat(post['timestamp']).timestamp() < 10800]
+recent_posts = [post for post in ig_data['data'] if current_timestamp - datetime.fromisoformat(post['timestamp'].replace('+0000', '')).timestamp() < 10800]
 
 #print(recent_posts)
 
