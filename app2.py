@@ -13,6 +13,7 @@ wc_consumer_secret = os.environ.get('WOOCOMMERCE_CONSUMER_SECRET')
 wp_url = os.environ.get('WORDPRESS_URL')
 wp_username = os.environ.get('WORDPRESS_USERNAME')
 wp_password = os.environ.get('WORDPRESS_PASSWORD')
+discord_webhook = os.environ.get('DISCORD_WEBHOOK')
 
 # Informations d'authentification Instagram
 instagram_token = os.environ.get('INSTAGRAM_TOKEN')
@@ -53,6 +54,24 @@ def wp_upload_img(i,imd_id,img_url,post_title,post_id):
     # Suppression de l'image localement
     #os.remove(f'{post_id}.jpg')
     return img
+
+def send_discord(notif):
+    webhook_url = discord_webhook
+
+    message = {
+        "content": notif
+    }
+
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(webhook_url, data=json.dumps(message), headers=headers)
+
+    if response.status_code == 204:
+        print("Le message a été envoyé avec succès à Discord !")
+    else:
+        print(f"Une erreur est survenue : {response.text}")
 
 credentials = wp_username + ':' + wp_password
 token = base64.b64encode(credentials.encode())
@@ -125,12 +144,15 @@ for post in ig_data['data']:
             #print(response.text)
 
             if response.status_code == 201:
-                print(f"Le produit {post_title if post_title else f'Instagram post {post_id}'} a été créé avec succès sur WooCommerce !")
+                print(f"Le produit {post_title if post_title else f'Instagram post {post_id}'} a été créé avec succès sur WooCommerce ! ({i+1} photos)")
+                send_discord(f" ✅ - Le produit {post_title if post_title else f'Instagram post {post_id}'} a été créé avec succès sur WooCommerce ! ({i+1} photos)")
             else:
                 print(f"Une erreur est survenue lors de la création du produit {post_title if post_title else f'Instagram post {post_id}'} sur WooCommerce")
+                send_discord(f" ❌ - Une erreur est survenue lors de la création du produit {post_title if post_title else f'Instagram post {post_id}'} sur WooCommerce")
             
     except:
         print(f"Le post Instagram {post_id} n'est pas formatté correctement !")
+        send_discord(f" ⚠️ - Le post Instagram {post_id} n'est pas formatté correctement !")
         continue
 
 # Suppression de l'image localement
