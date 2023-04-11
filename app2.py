@@ -4,6 +4,8 @@ import requests
 import json
 import base64
 import re
+import time
+from datetime import datetime
 
 
 # Informations d'authentification WooCommerce
@@ -18,12 +20,13 @@ discord_webhook = os.environ.get('DISCORD_WEBHOOK')
 # Informations d'authentification Instagram
 instagram_token = os.environ.get('INSTAGRAM_TOKEN')
 
-# Récupération des dernières publications Instagram
-response = requests.get(f'https://graph.instagram.com/me/media?fields=id,media_type,media_url,caption&access_token={instagram_token}')
-ig_data = json.loads(response.text)
+# Identification WordPress
+credentials = wp_username + ':' + wp_password
+token = base64.b64encode(credentials.encode())
+header_json = {'Authorization': 'Basic ' + token.decode('utf-8')}
 
-#print(ig_data)
 
+# Envoi des images sur WordPress
 def wp_upload_img(i,imd_id,img_url,post_title,post_id):
     if imd_id != '':
         response = requests.get(f"https://graph.instagram.com/{imd_id}?fields=id,media_type,media_url&access_token={instagram_token}")
@@ -55,6 +58,7 @@ def wp_upload_img(i,imd_id,img_url,post_title,post_id):
     #os.remove(f'{post_id}.jpg')
     return img
 
+# Envoi d'une notification sur Discord
 def send_discord(notif):
     webhook_url = discord_webhook
 
@@ -73,20 +77,30 @@ def send_discord(notif):
     else:
         print(f"Une erreur est survenue : {response.text}")
 
-credentials = wp_username + ':' + wp_password
-token = base64.b64encode(credentials.encode())
-header_json = {'Authorization': 'Basic ' + token.decode('utf-8')}
+
+# Récupération des dernières publications Instagram
+response = requests.get(f'https://graph.instagram.com/me/media?fields=id,media_type,media_url,timestamp,caption&access_token={instagram_token}')
+ig_data = json.loads(response.text)
+
+# Récupération du timestamp actuel
+current_timestamp = int(time.time())
+
+#print(ig_data)
 
 # Boucle pour parcourir les publications et créer des produits sur WooCommerce
-for post in ig_data['data']:
+recent_posts = [post for post in ig_data['data'] if datetime.now().timestamp() - datetime.fromisoformat(post['timestamp']).timestamp() < 10800]
 
+#print(recent_posts)
+
+for post in recent_posts:
+    #print(post)
     post_id = post['id']
     try:
         # Extraction des informations de publication
         post_type = post['media_type']
         post_url = post['media_url']
         post_cat = post['caption'].split('#', 1)[-1].split()[0]
-        post_title = post['caption'].split('\n')[0].split(' - ')[1]
+        post_title = post['caption'].split('\n')[0]
         post_desc = post['caption'].split('\n')[1]
         #post_price = post['caption'].split('\n')[2]
         match = re.search(r'\d+', post['caption'].split('\n')[2])
@@ -94,7 +108,9 @@ for post in ig_data['data']:
             post_price = str(match.group())
         else:
             print("Aucun prix trouvé")
+            post_price = ''
         img_list = []
+        
 
         # Vérification de l'existance du produit
         response = requests.get(f'{wc_url}/wp-json/wc/v3/products?slug={post_id}', auth=(wc_consumer_key, wc_consumer_secret))
@@ -119,7 +135,7 @@ for post in ig_data['data']:
             
             else:
                 image_url = [post['media_url']]
-                i=0
+                i=1
                 img = wp_upload_img(i,'',image_url,post_title,post_id)
                 img_list.append({"src": f'https://nevermind.papamica.dev/wp-content/uploads/{img}'})
 
@@ -144,7 +160,7 @@ for post in ig_data['data']:
             #print(response.text)
 
             if response.status_code == 201:
-                print(f"Le produit {post_title if post_title else f'Instagram post {post_id}'} a été créé avec succès sur WooCommerce ! ({i+1} photos)")
+                print(f"Le produit {post_title if post_title else f'Instagram post {post_id}'} a été créé avec succès sur WooCommerce ! ({i} photos)")
                 send_discord(f" ✅ - Le produit {post_title if post_title else f'Instagram post {post_id}'} a été créé avec succès sur WooCommerce ! ({i+1} photos)")
             else:
                 print(f"Une erreur est survenue lors de la création du produit {post_title if post_title else f'Instagram post {post_id}'} sur WooCommerce")
