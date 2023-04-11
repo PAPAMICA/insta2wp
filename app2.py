@@ -161,7 +161,7 @@ for post in recent_posts:
 
             if response.status_code == 201:
                 print(f"Le produit {post_title if post_title else f'Instagram post {post_id}'} a été créé avec succès sur WooCommerce ! ({i} photos)")
-                send_discord(f" ✅ - Le produit {post_title if post_title else f'Instagram post {post_id}'} a été créé avec succès sur WooCommerce ! ({i+1} photos)")
+                send_discord(f" ✅ - Le produit {post_title if post_title else f'Instagram post {post_id}'} a été créé avec succès sur WooCommerce ! ({i} photos)")
             else:
                 print(f"Une erreur est survenue lors de la création du produit {post_title if post_title else f'Instagram post {post_id}'} sur WooCommerce")
                 send_discord(f" ❌ - Une erreur est survenue lors de la création du produit {post_title if post_title else f'Instagram post {post_id}'} sur WooCommerce")
