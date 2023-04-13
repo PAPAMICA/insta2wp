@@ -142,8 +142,13 @@ for post in recent_posts:
             # Récupérer l'ID de la catégorie
             response = requests.get(f"{wc_url}/wp-json/wc/v3/products/categories?slug={post_cat}", auth=(wc_consumer_key, wc_consumer_secret))
             category_id = response.json()[0]['id']
+            category_parent_id = response.json()[0]['parent']
             if not category_id:
                 category_id = 0
+            cat_list =[]
+            cat_list.append({"id": category_id})
+            if category_parent_id != "0":
+                cat_list.append({"id": category_parent_id})
             
             # Création du produit sur WooCommerce
             wc_product_data = {
@@ -153,7 +158,7 @@ for post in recent_posts:
                 'short_description': '',
                 'type': 'simple',
                 'regular_price': post_price,
-                'categories': [{'id': category_id}],
+                'categories': cat_list,
                 "images": img_list
             }
             response = requests.post(f'{wc_url}/wp-json/wc/v3/products', auth=(wc_consumer_key, wc_consumer_secret), json=wc_product_data)
